@@ -1,0 +1,33 @@
+{
+  "name": "enchanted-broom",
+  "version": "1.0.0",
+  "description": "Distributed testing with the help of multiple docker containers",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "broom": "index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ernestohs/enchanted-broom.git"
+  },
+  "keywords": [
+    "Distributed",
+    "testing",
+    "docker",
+    "jmeter",
+    "cli"
+  ],
+  "author": "Ernesto Herrera Salinas",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ernestohs/enchanted-broom/issues"
+  },
+  "homepage": "https://github.com/ernestohs/enchanted-broom#readme",
+  "dependencies": {
+    "chalk": "^1.1.3",
+    "commander": "^2.9.0"
+  }
+}

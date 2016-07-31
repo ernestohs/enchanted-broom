@@ -1,0 +1,25 @@
+FROM java:latest
+MAINTAINER Ernesto Herrera Salinas ernestohs@gmail.com
+
+# Install JMeter
+RUN \
+  cd /tmp && \
+  wget http://www-us.apache.org/dist//jmeter/binaries/apache-jmeter-3.0.tgz && \
+  tar xvzf apache-jmeter-3.0.tgz && \
+  rm -f apache-jmeter-3.0.tgz && \
+  mv /tmp/apache-jmeter-3.0 /apache-jmeter && \
+  mkdir -p /tests/data && \
+  mkdir -p /tests/logs && \
+  mkdir -p /tests/work
+
+# define environment variables
+ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/apache-jmeter/bin
+
+# Volumes
+VOLUME ["/tests/data"]
+VOLUME ["/tests/logs"]
+VOLUME ["/tests/work"]
+
+WORKDIR /tests/work
+
+ENTRYPOINT [ "/apache-jmeter/bin/jmeter" ]
