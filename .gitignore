@@ -76,7 +76,7 @@ typings/
 .env
 
 # vim
-.swp
+*.swp
 
 
 # End of https://www.gitignore.io/api/node,linux
