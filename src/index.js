@@ -6,4 +6,5 @@
 
 var app = require('./validation.js')
 
-app();
+app()
+.execute();

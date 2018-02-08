@@ -1,54 +1,51 @@
-module.exports = function () {
+module.exports = function() {
   var chalk = require('chalk');
   var fs = require('fs');
   var program = require('commander');
 
-  program.validateArguments = function () {
-  if (program.script)
-  {
+  program.validateArguments = function() {
+    if (program.script) {
 
-    if (program.nodes === undefined) {
-      program.nodes = 1;
-      console.log(chalk.yellow('Number of nodes was not specified, the test will run with only one node.'));
-    }
+      if (!fs.existsSync(program.script)) {
+        console.log(chalk.red('Script file name `' + program.script + '` does not exists'));
+        process.exit(1);
+      }
 
-    if (program.threads === undefined) {
-      program.threads = 1;
-      console.log(chalk.yellow('Number of threads was not specified, the test will run with only one thread.'));
-    }
+      if (program.nodes === undefined) {
+        program.nodes = 1;
+        console.log(chalk.yellow('Number of nodes was not specified, the test will run with only one node.'));
+      }
 
-    if (program.data === undefined) {
-      program.data = __dirname;
-      console.log(chalk.yellow('The path of the data directory was not specified, the test will run using the current path as the data directory.'));
-    }
+      if (program.threads === undefined) {
+        program.threads = 1;
+        console.log(chalk.yellow('Number of threads was not specified, the test will run with only one thread.'));
+      }
 
-    if (program.working === undefined) {
-      program.working = __dirname;
-      console.log(chalk.yellow('The path for the working forlder for the script was not specified, the test will run using the current path as the working directory.'));
-    }
+      if (program.data === undefined) {
+        program.data = __dirname;
+        console.log(chalk.yellow('The path of the data directory was not specified, the test will run using the current path as the data directory.'));
+      } else if (!fs.existsSync(program.data)) {
+        console.log(chalk.red('The path `' + program.data + '` does not exists'));
+        process.exit(1);
+      }
 
-    if (!fs.existsSync(program.data)) {
-      console.log(chalk.red( 'The path `' + program.data + '` does not exists' ) );
+      if (program.working === undefined) {
+        program.working = __dirname;
+        console.log(chalk.yellow('The path for the working forlder for the script was not specified, the test will run using the current path as the working directory.'));
+      } else if (!fs.existsSync(program.working)) {
+        console.log(chalk.red('The path `' + program.data + '` does not exists'));
+        process.exit(1);
+      }
+    } else {
+      program.help();
       process.exit(1);
     }
 
-    if (!fs.existsSync(program.working)) {
-      console.log(chalk.red( 'The path `' + program.data + '` does not exists' ) );
-      process.exit(1);
-    }
-
-    if (!fs.existsSync(program.script))
-    {
-      console.log(chalk.red( 'Script file name `' + program.script + '` does not exists' ) );
-      process.exit(1);
-    }
-
-  } else {
-    program.help();
-    process.exit(1);
-  }
-
-  return this;
+    return this;
+  };
+  program.execute = function () {
+    console.log('Create %d containers', program.nodes);
+    return this;
   };
 
   program
