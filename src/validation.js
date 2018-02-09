@@ -44,7 +44,44 @@ module.exports = function() {
     return this;
   };
   program.execute = function () {
+    const Container = require('docker-service-api').Container;
+
     console.log('Create %d containers', program.nodes);
+    // TODO: Create logs directory
+    
+    const {
+      Docker
+    } = require('node-docker-api');
+
+    const docker = new Docker({
+      host: '127.0.0.1',
+      port: '2375'
+    });
+
+    let containers = [];
+
+    const promises = Array.from(Array(program.nodes), (_, n) =>
+      new Promise(resolve => docker.container.create({
+          Image: 'tutum/hello-world',
+          name: 'slave-' + n
+        })
+        // TODO: Create a sub-directory for each node
+        .then(container => container.start())
+        .then(container => containers.push(container))
+        .then(resolve)// TODO: Get server ips
+        .catch(error => console.log(error)))
+    );
+
+    Promise.all(promises)
+      .then(values => {
+        docker.container.create({
+          Image: 'tutum/hello-world',
+          name: 'master'
+        })
+        .then(container => container.start())
+        .then(congainer => console.log('Its done'));
+      });
+
     return this;
   };
 
