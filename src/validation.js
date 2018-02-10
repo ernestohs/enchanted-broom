@@ -1,7 +1,9 @@
 module.exports = function() {
   var chalk = require('chalk');
   var fs = require('fs');
+  const path = require('path');
   var program = require('commander');
+  var unique = require('short-unique-id');
 
   program.validateArguments = function() {
     if (program.script) {
@@ -36,19 +38,22 @@ module.exports = function() {
         console.log(chalk.red('The path `' + program.data + '` does not exists'));
         process.exit(1);
       }
+
     } else {
       program.help();
       process.exit(1);
     }
 
+    var uid = new unique();
+    program.sessionId = uid.randomUUID(8);
+
     return this;
   };
-  program.execute = function () {
-    const Container = require('docker-service-api').Container;
+
+  program.execute = function() {
 
     console.log('Create %d containers', program.nodes);
-    // TODO: Create logs directory
-    
+
     const {
       Docker
     } = require('node-docker-api');
@@ -60,29 +65,79 @@ module.exports = function() {
 
     let containers = [];
 
-    const promises = Array.from(Array(program.nodes), (_, n) =>
-      new Promise(resolve => docker.container.create({
+    fs.mkdirSync(`${program.working}/logs`);
+
+    const promises = Array.from(Array(program.nodes), (_, n) => {
+      fs.mkdirSync(`${program.working}/logs/${n}`);
+      fs.mkdirSync(`${program.working}/${n}`);
+
+      return new Promise(resolve => docker.container.create({
           Image: 'tutum/hello-world',
-          name: 'slave-' + n
+          name: `slave-${program.sessionId}-${n}`,
+          HostConfig: {
+            PortBindings: {
+              "1099/tcp": [{
+                "HostPort": `${49500+n+n}`
+              }], // READ
+              "60000/tcp": [{
+                "HostPort": `${49501+n+n}`
+              }] // WRITE
+            },
+            Binds: [
+              `${program.data}:/tests/data`,
+              `${program.working}/logs/${n}:/tests/logs`,
+              `${program.working}/${n}:/tests/work`
+            ]
+          }
         })
-        // TODO: Create a sub-directory for each node
         .then(container => container.start())
         .then(container => containers.push(container))
-        .then(resolve)// TODO: Get server ips
-        .catch(error => console.log(error)))
-    );
+        .then(resolve) // TODO: Get server ips
+        .catch(error => console.log(error)));
+    });
 
     Promise.all(promises)
       .then(values => {
+
+        containers.forEach(c => {
+          var cache = [];
+          console.log(JSON.stringify(c, function(key, value) {
+            if (typeof value === 'object' && value !== null) {
+              if (cache.indexOf(value) !== -1) {
+                // Circular reference found, discard key
+                return;
+              }
+              // Store value in our collection
+              cache.push(value);
+            }
+            return value;
+          }));
+          cache = null;
+        });
+
         docker.container.create({
-          Image: 'tutum/hello-world',
-          name: 'master'
-        })
-        .then(container => container.start())
-        .then(congainer => console.log('Its done'));
+            Image: 'tutum/hello-world',
+            name: 'master'
+          })
+          .then(container => container.start())
+          .then(container => container.stop())
+          .then(container => {
+            containers.forEach( c => c.stop() );
+            return container;
+          })
+          .then(container => container.delete({force:true}))
+          .then(congainer => console.log('Its done'));
       });
 
     return this;
+  };
+
+  var absolutePath = function(p) {
+    if (path.isAbsolute(p)) return;
+
+    var fixed = path.normalize(path.join(__dirname, p));
+
+    return fixed;
   };
 
   program
@@ -91,8 +146,8 @@ module.exports = function() {
     .option('-n, --nodes <nodes>', 'Number of test nodes', parseInt)
     .option('-t, --threads <threads>', 'Number of threads', parseInt)
     .option('-s, --script <filename>', 'Script file')
-    .option('-d, --data <directory>', 'Data directory')
-    .option('-w, --working <directory>', 'Working directory')
+    .option('-d, --data <directory>', 'Data directory', absolutePath)
+    .option('-w, --working <directory>', 'Working directory', absolutePath)
     .parse(process.argv)
     .validateArguments();
 
