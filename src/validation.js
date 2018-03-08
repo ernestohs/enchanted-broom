@@ -65,11 +65,12 @@ module.exports = function() {
 
     let containers = [];
 
-    fs.mkdirSync(`${program.working}/logs`);
+    fs.mkdirSync(`${program.working}/${program.sessionId}`);
+    fs.mkdirSync(`${program.working}/${program.sessionId}/logs`);
 
     const promises = Array.from(Array(program.nodes), (_, n) => {
-      fs.mkdirSync(`${program.working}/logs/${n}`);
-      fs.mkdirSync(`${program.working}/${n}`);
+      fs.mkdirSync(`${program.working}/${program.sessionId}/logs/${n}`);
+      fs.mkdirSync(`${program.working}/${program.sessionId}/${n}`);
 
       return new Promise(resolve => docker.container.create({
           Image: 'tutum/hello-world',
@@ -85,47 +86,43 @@ module.exports = function() {
             },
             Binds: [
               `${program.data}:/tests/data`,
-              `${program.working}/logs/${n}:/tests/logs`,
-              `${program.working}/${n}:/tests/work`
+              `${program.working}/${program.sessionId}/logs/${n}:/tests/logs`,
+              `${program.working}/${program.sessionId}/${n}:/tests/work`
             ]
           }
         })
         .then(container => container.start())
         .then(container => containers.push(container))
-        .then(resolve) // TODO: Get server ips
+        //.then(() => containers[containers.length - 1].status()) // TODO: Get server ips
         .catch(error => console.log(error)));
     });
 
     Promise.all(promises)
       .then(values => {
 
-        containers.forEach(c => {
-          var cache = [];
-          console.log(JSON.stringify(c, function(key, value) {
-            if (typeof value === 'object' && value !== null) {
-              if (cache.indexOf(value) !== -1) {
-                // Circular reference found, discard key
-                return;
-              }
-              // Store value in our collection
-              cache.push(value);
-            }
-            return value;
-          }));
-          cache = null;
-        });
-
         docker.container.create({
             Image: 'tutum/hello-world',
-            name: 'master'
+            name: 'master',
+
+            Binds: [
+              `${program.data}:/tests/data`,
+              `${program.working}/${program.sessionId}/logs/${n}:/tests/logs`,
+              `${program.working}/${program.sessionId}/${n}:/tests/scripts`
+            ]
           })
           .then(container => container.start())
-          .then(container => container.stop())
           .then(container => {
-            containers.forEach( c => c.stop() );
+            containers.forEach(c => {
+              c.stop();
+              c.delete({
+                force: true
+              });
+            });
             return container;
           })
-          .then(container => container.delete({force:true}))
+          .then(container => container.delete({
+            force: true
+          }))
           .then(congainer => console.log('Its done'));
       });
 
