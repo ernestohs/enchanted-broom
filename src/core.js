@@ -36,59 +36,76 @@ module.exports = function() {
       });
 
       pullImageIfMissing(test, function() {
-            console.log('Create directories');
-            // Create base directories
-            fs.mkdirSync(`${test.working}/${test.sessionId}`);
-            fs.mkdirSync(`${test.working}/${test.sessionId}/logs`);
+          console.log('Create directories');
+          // Create base directories
+          fs.mkdirSync(`${test.working}/${test.sessionId}`);
+          fs.mkdirSync(`${test.working}/${test.sessionId}/logs`);
 
-            const promises = Array.from(Array(test.nodes), (_, n) => {
-              console.log('Create promise %s', n);
-              fs.mkdirSync(`${test.working}/${test.sessionId}/logs/${n}`);
-              fs.mkdirSync(`${test.working}/${test.sessionId}/${n}`);
+          const promises = Array.from(Array(test.nodes), (_, n) => {
+            console.log('Create promise %s', n);
+            fs.mkdirSync(`${test.working}/${test.sessionId}/logs/${n}`);
+            fs.mkdirSync(`${test.working}/${test.sessionId}/${n}`);
 
-              return new Promise(resolve => {
-                docker.createContainer({
-                  Image: test.slave_image,
-                  name: `slave-${test.sessionId}-${n}`,
-                  HostConfig: {
-                    PortBindings: {
-                      "1099/tcp": [{
-                        "HostPort": `${49500+n+n}`
-                      }], // READ
-                      "60000/tcp": [{
-                        "HostPort": `${49501+n+n}`
-                      }] // WRITE
-                    },
-                    Binds: [
-                      `${test.data}:/tests/data`,
-                      `${test.working}/${test.sessionId}/logs/${n}:/tests/logs`,
-                      `${test.working}/${test.sessionId}/${n}:/tests/work`
-                    ]
-                  }
-                }, function(err, container) {
-                  if (err) {
-                    console.error(err);
-                    resolve(err);
-                  }
-                  containers.push(container);
-                  container.start(function(err, data) {
-                    console.log('start container');
-                    container.inspect(function(err, d) {
-                      resolve(d);
-                    });
+            return new Promise(resolve => {
+              docker.createContainer({
+                Image: test.slave_image,
+                name: `slave-${test.sessionId}-${n}`,
+                HostConfig: {
+                  PortBindings: {
+                    "1099/tcp": [{
+                      "HostPort": `${49500+n+n}`
+                    }], // READ
+                    "60000/tcp": [{
+                      "HostPort": `${49501+n+n}`
+                    }] // WRITE
+                  },
+                  Binds: [
+                    `${test.data}:/tests/data`,
+                    `${test.working}/${test.sessionId}/logs/${n}:/tests/logs`,
+                    `${test.working}/${test.sessionId}/${n}:/tests/work`
+                  ]
+                }
+              }, function(err, container) {
+                if (err) {
+                  console.error(err);
+                  resolve(err);
+                }
+                containers.push(container);
+                container.start(function(err, data) {
+                  console.log('start container');
+                  container.inspect(function(err, d) {
+                    resolve(d);
                   });
-                })
-              });
-
+                });
+              })
             });
 
-            Promise
-              .all(promises)
-              .then(values => {
-                  console.log(values.map(x => x.NetworkSettings.IPAddress));
-                // Execute master container with parameters
-                console.log('All promises are fullfiled');
+          });
+
+          Promise
+            .all(promises)
+            .then(values => {
+              console.log(values.map(x => x.NetworkSettings.IPAddress));
+              docker.run(test.master_image, ['bash', '-c', 'uname -a'], process.stdout).then(function(container) {
+                console.log(container.output.StatusCode);
+                return container.remove();
+              }).then(function(data) {
+                console.log('container removed');
+              }).catch(function(err) {
+                console.log(err);
               });
+              docker.createContainer({
+                Image: test.master_image,
+                name: `master-${test.sessionId}`
+              }, function (err, container){
+                container.start(function(err, data){
+                  console.log('Start');
+                });
+              });
+
+              // Execute master container with parameters
+              console.log('All promises are fullfiled');
+            });
 
         },
         function(event) {
@@ -96,6 +113,6 @@ module.exports = function() {
             title: event.status
           });
         });
-  }
-};
+    }
+  };
 }
