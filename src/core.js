@@ -4,8 +4,8 @@ module.exports = function() {
   let Docker = require('dockerode');
   let fs = require('fs');
   let docker = new Docker({
-    host: 'http://127.0.0.1',
-    port: 2375
+    host: 'http://127.0.0.1', // TODO: put it on configuration
+    port: 2375 // TODO: put it on configuration
   });
 
   let containers = [];
