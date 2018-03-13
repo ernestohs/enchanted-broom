@@ -85,28 +85,31 @@ module.exports = function() {
           Promise
             .all(promises)
             .then(values => {
-              console.log(values.map(x => x.NetworkSettings.IPAddress));
-              docker.run(test.master_image, ['bash', '-c', 'uname -a'], process.stdout).then(function(container) {
-                console.log(container.output.StatusCode);
-                return container.remove();
-              }).then(function(data) {
-                console.log('container removed');
-              }).catch(function(err) {
-                console.log(err);
-              });
+              var slave_ips = values.map(x => x.NetworkSettings.IPAddress).join(',');
+              console.log(slave_ips);
+              console.log('All promises are fullfiled');
+
               docker.createContainer({
                 Image: test.master_image,
-                name: `master-${test.sessionId}`
-              }, function (err, container){
-                container.start(function(err, data){
-                  console.log('Start');
-                });
+                name: `master-${test.sessionId}`,
+                Cmd: ['-n', '-t', `/scripts/${test.script}`, '-l', '/tests/logs/results.csv', '-LDEBUG', '-R${slave_ips}']
+              }).then(function(container) {
+                return container.start();
+              }).then(function(container) {
+                return container.wait();
+              }).then(function(container) {
+                // TODO: take all the logs from the slaves
+                // TODO: stop all the slaves
+                // TODO: remove all the slaves
+                return container.stop();
+              }).then(function(container) {
+                return container.remove();
+              }).then(function (){
+                console.log('Test is completed');
+              }).catch(function(err) {
+                console.error(err);
               });
-
-              // Execute master container with parameters
-              console.log('All promises are fullfiled');
             });
-
         },
         function(event) {
           bar.tick({

@@ -58,7 +58,8 @@ module.exports = function() {
     var uid = new unique();
     program.sessionId = uid.randomUUID(8);
     program.slave_image = 'tutum/hello-world:latest';
-    
+    program.master_image = 'tutum/hello-world:latest';
+
     return this;
   };
 
